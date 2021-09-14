@@ -1,11 +1,13 @@
 #!/usr/bin/env python
+# pylint: disable-msg=C0103
 """ get arp table from pfSense firewall"""
 
 import os
+import sqlite3
 import sys
 import click
 from dotenv import load_dotenv
-from paramiko import SSHClient
+from paramiko import SSHClient, SSHException
 
 # =================================================================
 # UTILITY FUNCTIONS
@@ -147,9 +149,15 @@ def cli(verbose):
 
     try:
         _ = get_mac_ip(verbose)
-    except paramiko.SSHException as e:
-        click.echo(e)
+    except SSHException as error:
+        click.echo(error)
         sys.exit(3)
+
+    try:
+        pass
+    except sqlite3.Error as error:
+        click.echo(error)
+        sys.exit(4)
 
     sys.exit(0)
 
