@@ -7,3 +7,5 @@ venv/*
 *.vscode
 *.egg-info/
 .*.swp
+build/*
+dist/*
