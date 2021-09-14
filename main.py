@@ -95,7 +95,7 @@ class Ssh:
 # =================================================================
 # BREAD AND BUTTER STUFF
 # =================================================================
-def get_machines(verbose):
+def get_data(verbose):
     """collect list of mac/ip"""
     pfsense = Ssh(
         verbose,
@@ -112,6 +112,11 @@ def get_machines(verbose):
     output = pfsense.wait_menu_prompt()
     pfsense.ssh_down()
 
+    return output
+
+def get_machines(verbose):
+    """collect list of mac/ip"""
+    output = get_data(verbose)
     # process addresses
     lines = output.split("\r")
     ip_macs = [x[1:] for x in lines if "?" in x]
