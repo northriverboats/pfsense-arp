@@ -41,7 +41,7 @@ class Ssh:
         self.client = SSHClient()
         self.client.load_system_host_keys()
         if self.verbose:
-            print("About to Connect")
+            click.echo("About to Connect")
         self.client.connect(
             self.address,
             port=self.port,
@@ -52,7 +52,7 @@ class Ssh:
         """ get ssh shell for current session"""
         self.shell = self.client.invoke_shell()
         if self.verbose:
-            print("Connected")
+            click.echo("Connected")
 
     def ssh_up(self):
         """setup connection"""
@@ -63,7 +63,7 @@ class Ssh:
         """tear down connection"""
         self.client.close()
         if self.verbose:
-            print("Disconnected")
+            click.echo("Disconnected")
 
     def wait_menu_prompt(self):
         """wait for menu prompt"""
@@ -73,7 +73,7 @@ class Ssh:
             result = self.shell.recv(65100).decode('ascii')
             output += result
             if self.verbose:
-                print(result)
+                click.echo(result)
         return output
 
     def wait_command_prompt(self):
@@ -84,7 +84,7 @@ class Ssh:
             result = self.shell.recv(65100).decode('ascii')
             output += result
             if self.verbose:
-                print(result)
+                click.echo(result)
         return output
 
     def send_command(self, command):
