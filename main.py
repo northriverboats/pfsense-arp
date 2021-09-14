@@ -145,7 +145,12 @@ def cli(verbose):
     env_path = resource_path('.env')
     load_dotenv(dotenv_path=env_path)
 
-    _ = get_mac_ip(verbose)
+    try:
+        _ = get_mac_ip(verbose)
+    except paramiko.SSHException as e:
+        click.echo(e)
+        sys.exit(3)
+
     sys.exit(0)
 
 
