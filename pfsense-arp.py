@@ -125,7 +125,8 @@ def parse_mac_ip(lines):
         if len(ip_mac.split("(")):
             ip_address = ip_mac.split("(")[1].split(")")[0]
             mac_address = ip_mac.split("(")[1].split("at ")[1].split(" ")[0]
-            machines.append((mac_address, ip_address, datetime.datetime.now()))
+            order = int(ip_address.split(".")[3])
+            machines.append((mac_address, ip_address, f"{order:03d}", datetime.datetime.now()))
     return machines
 
 def get_mac_ip(verbose):
@@ -161,10 +162,11 @@ def cli(verbose):
         cursor.execute("""CREATE TABLE IF NOT EXISTS address(
                mac TEXT PRIMARY KEY,
                ip TEXT,
+               ord TEXT,
                updated TIMESTAMP);
         """)
-        _ = cursor.executemany("""REPLACE INTO address (mac, ip, updated)
-                               VALUES(?, ?, ?)""", machines)
+        _ = cursor.executemany("""REPLACE INTO address (mac, ip, ord, updated)
+                               VALUES(?, ?, ?, ?)""", machines)
         conn.commit()
         conn.close()
     except sqlite3.Error as error:
