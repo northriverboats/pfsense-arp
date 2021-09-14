@@ -95,7 +95,7 @@ class Ssh:
 # =================================================================
 # BREAD AND BUTTER STUFF
 # =================================================================
-def get_data(verbose):
+def ssh_get_mac_ip(verbose):
     """collect list of mac/ip"""
     pfsense = Ssh(
         verbose,
@@ -114,11 +114,8 @@ def get_data(verbose):
 
     return output
 
-def get_machines(verbose):
-    """collect list of mac/ip"""
-    output = get_data(verbose)
-    # process addresses
-    lines = output.split("\r")
+def parse_mac_ip(lines):
+    """parse to mac /ip list"""
     ip_macs = [x[1:] for x in lines if "?" in x]
     machines = []
     for ip_mac in ip_macs:
@@ -127,6 +124,12 @@ def get_machines(verbose):
             mac_address = ip_mac.split("(")[1].split("at ")[1].split(" ")[0]
             machines.append((mac_address, ip_address))
     return machines
+
+def get_mac_ip(verbose):
+    """collect list of mac/ip"""
+    output = ssh_get_mac_ip(verbose)
+    lines = output.split("\r")
+    return parse_mac_ip(lines)
 
 @click.command()
 @click.option(
@@ -142,7 +145,7 @@ def cli(verbose):
     env_path = resource_path('.env')
     load_dotenv(dotenv_path=env_path)
 
-    _ = get_machines(verbose)
+    _ = get_mac_ip(verbose)
     sys.exit(0)
 
 
