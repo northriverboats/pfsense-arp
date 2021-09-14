@@ -18,6 +18,11 @@ def resource_path(relative_path):
     )
 
 # =================================================================
+# SQLITE RELEATED FUNCTIONS
+# =================================================================
+
+
+# =================================================================
 # SSH RELEATED FUNCTIONS
 # =================================================================
 class Ssh:
@@ -94,9 +99,9 @@ def get_machines(verbose):
     """collect list of mac/ip"""
     pfsense = Ssh(
         verbose,
-        os.getenv('SSH_ADDRESS'),
-        os.getenv('SSH_PORT'),
-        os.getenv('SSH_USER'),
+        os.environ.get('SSH_ADDRESS', '127.0.0.1'),
+        os.environ.get('SSH_PORT', 22),
+        os.environ.get('SSH_USER', 'root'),
     )
 
     pfsense.ssh_up()
