@@ -1,0 +1,9 @@
+__pycache__/*
+venv/*
+*.pyc
+.env
+.envrc
+*.pickle
+*.vscode
+*.egg-info/
+.*.swp
