@@ -2,6 +2,7 @@
 # pylint: disable-msg=C0103
 """ get arp table from pfSense firewall"""
 
+import datetime
 import os
 import sqlite3
 import sys
@@ -124,7 +125,7 @@ def parse_mac_ip(lines):
         if len(ip_mac.split("(")):
             ip_address = ip_mac.split("(")[1].split(")")[0]
             mac_address = ip_mac.split("(")[1].split("at ")[1].split(" ")[0]
-            machines.append((mac_address, ip_address))
+            machines.append((mac_address, ip_address, datetime.datetime.now()))
     return machines
 
 def get_mac_ip(verbose):
@@ -148,13 +149,24 @@ def cli(verbose):
     load_dotenv(dotenv_path=env_path)
 
     try:
-        _ = get_mac_ip(verbose)
+        machines = get_mac_ip(verbose)
     except SSHException as error:
         click.echo(error)
         sys.exit(3)
 
     try:
-        pass
+        conn = sqlite3.connect(os.environ.get('DATABASE', ':memory'))
+        cursor = conn.cursor()
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS address(
+               mac TEXT PRIMARY KEY,
+               ip TEXT,
+               updated TIMESTAMP);
+        """)
+        _ = cursor.executemany("""REPLACE INTO address (mac, ip, updated)
+                               VALUES(?, ?, ?)""", machines)
+        conn.commit()
+        conn.close()
     except sqlite3.Error as error:
         click.echo(error)
         sys.exit(4)
