@@ -12,90 +12,110 @@ from paramiko import SSHClient
 # =================================================================
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
+    return os.path.join(
+        os.environ.get( "_MEIPASS2", os.path.abspath(".")),
+        relative_path
+    )
 
 # =================================================================
 # SSH RELEATED FUNCTIONS
 # =================================================================
-def ssh_open(verbose):
-    """ open ssh conncetion to pfSense router"""
-    client = SSHClient()
-    client.load_system_host_keys()
-    if verbose:
-        print("About to Connect")
-    client.connect(
-        os.getenv('SSH_ADDRESS'),
-        port=os.getenv('SSH_PORT'),
-        username=os.getenv('SSH_USER'),
-    )
-    return client
+class Ssh:
+    """works with ssh connection to pfSense"""
 
-def ssh_close(client, verbose):
-    """close connection"""
-    client.close()
-    if verbose:
-        print("Disconnected")
+    def __init__(self, verbose, address, port, user):
+        self.verbose = verbose
+        self.address = address
+        self.port = port
+        self.user = user
+        self.shell = 0
+        self.client = 0
 
-def get_ssh_shell(client, verbose):
-    """ get ssh shell for current session"""
-    my_ssh_shell = client.invoke_shell()
-    if verbose:
-        print("Connected")
-    return my_ssh_shell
+    def ssh_open(self):
+        """ open ssh conncetion to pfSense router"""
+        self.client = SSHClient()
+        self.client.load_system_host_keys()
+        if self.verbose:
+            print("About to Connect")
+        self.client.connect(
+            self.address,
+            port=self.port,
+            username=self.user,
+        )
 
-def wait_menu_prompt(my_ssh_shell, verbose):
-    """wait for menu prompt"""
-    output = ''
-    result = ''
-    while "Enter an option:" not in result:
-        result = my_ssh_shell.recv(65100).decode('ascii')
-        output += result
-        if verbose:
-            print(result)
-    return output
+    def get_ssh_shell(self):
+        """ get ssh shell for current session"""
+        self.shell = self.client.invoke_shell()
+        if self.verbose:
+            print("Connected")
 
-def wait_command_prompt(my_ssh_shell, verbose):
-    """wait for prompt and return output"""
-    output = ''
-    result = ''
-    while "pfSense.nrb.com" not in result:
-        result = my_ssh_shell.recv(65100).decode('ascii')
-        output += result
-        if verbose:
-            print(result)
-    return output
+    def ssh_up(self):
+        """setup connection"""
+        self.ssh_open()
+        self.get_ssh_shell()
 
-def send_command(my_ssh_shell, command):
-    """send command to remote server"""
-    my_ssh_shell.send(command + "\n")
+    def ssh_down(self):
+        """tear down connection"""
+        self.client.close()
+        if self.verbose:
+            print("Disconnected")
+
+    def wait_menu_prompt(self):
+        """wait for menu prompt"""
+        output = ''
+        result = ''
+        while "Enter an option:" not in result:
+            result = self.shell.recv(65100).decode('ascii')
+            output += result
+            if self.verbose:
+                print(result)
+        return output
+
+    def wait_command_prompt(self):
+        """wait for prompt and return output"""
+        output = ''
+        result = ''
+        while "pfSense.nrb.com" not in result:
+            result = self.shell.recv(65100).decode('ascii')
+            output += result
+            if self.verbose:
+                print(result)
+        return output
+
+    def send_command(self, command):
+        """send command to remote server"""
+        self.shell.send(command + "\n")
+
 
 # =================================================================
 # BREAD AND BUTTER STUFF
 # =================================================================
 def get_machines(verbose):
     """collect list of mac/ip"""
-    client = ssh_open(verbose)
-    my_ssh_shell = get_ssh_shell(client, verbose)
-    _ = wait_menu_prompt(my_ssh_shell, verbose)
-    send_command(my_ssh_shell, "8")
-    _ = wait_command_prompt(my_ssh_shell, verbose)
-    send_command(my_ssh_shell, "arp -a ; exit")
-    output = wait_menu_prompt(my_ssh_shell, verbose)
+    pfsense = Ssh(
+        verbose,
+        os.getenv('SSH_ADDRESS'),
+        os.getenv('SSH_PORT'),
+        os.getenv('SSH_USER'),
+    )
 
-    subset = output.split("\r")
-    ip_macs = [x[1:] for x in subset if "?" in x]
+    pfsense.ssh_up()
+    _ = pfsense.wait_menu_prompt()
+    pfsense.send_command("8")
+    _ = pfsense.wait_command_prompt()
+    pfsense.send_command("arp -a ; exit")
+    output = pfsense.wait_menu_prompt()
+    pfsense.ssh_down()
+
+    # process addresses
+    lines = output.split("\r")
+    ip_macs = [x[1:] for x in lines if "?" in x]
     machines = []
     for ip_mac in ip_macs:
         if len(ip_mac.split("(")):
             ip_address = ip_mac.split("(")[1].split(")")[0]
             mac_address = ip_mac.split("(")[1].split("at ")[1].split(" ")[0]
             machines.append((mac_address, ip_address))
-    ssh_close(client, verbose)
     return machines
 
 @click.command()
@@ -111,7 +131,6 @@ def cli(verbose):
     # load environmental variables
     env_path = resource_path('.env')
     load_dotenv(dotenv_path=env_path)
-
 
     _ = get_machines(verbose)
     sys.exit(0)
